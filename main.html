@@ -1,0 +1,714 @@
+<!-- templates/base.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Recruitment Analytics Dashboard{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Plotly.js -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom">
+        <div class="container-fluid">
+            <div class="navbar-brand d-flex align-items-center">
+                <img src="{{ url_for('static', filename='img/placeholder.png') }}" height="50" class="me-3" alt="Logo">
+                <h2 class="mb-0 text-primary">Recruitment Analytics Dashboard</h2>
+            </div>
+            <div class="navbar-nav ms-auto">
+                <button class="btn btn-primary btn-sm" id="exportBtn" disabled>
+                    <i class="fas fa-download me-2"></i>Export Report
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        {% block content %}{% endblock %}
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loadingOverlay" class="loading-overlay d-none">
+        <div class="loading-spinner">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Processing data...</p>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Custom JS -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
+
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<!-- File Upload Section -->
+<div class="row mb-4" id="uploadSection">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-light">
+                <h5 class="mb-0"><i class="fas fa-upload me-2"></i>Data Upload</h5>
+            </div>
+            <div class="card-body">
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-content">
+                        <i class="fas fa-cloud-upload-alt fa-3x text-muted mb-3"></i>
+                        <h5>Drag and Drop Excel File Here</h5>
+                        <p class="text-muted">or click to browse</p>
+                        <input type="file" id="fileInput" accept=".xlsx,.xls" style="display: none;">
+                    </div>
+                </div>
+                <div id="uploadStatus" class="mt-3"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Dashboard Section -->
+<div id="dashboardSection" class="d-none">
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="fas fa-filter me-2"></i>Filters</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-3">
+                            <label class="form-label">Hiring Manager</label>
+                            <select class="form-select" id="filterHiringManager" multiple>
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">TA Partner</label>
+                            <select class="form-select" id="filterTAPartner" multiple>
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Country</label>
+                            <select class="form-select" id="filterCountry" multiple>
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label">Project</label>
+                            <select class="form-select" id="filterProject" multiple>
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row g-3 mt-2">
+                        <div class="col-md-6">
+                            <label class="form-label">Date Range</label>
+                            <div class="row">
+                                <div class="col-6">
+                                    <input type="date" class="form-control" id="startDate" placeholder="Start Date">
+                                </div>
+                                <div class="col-6">
+                                    <input type="date" class="form-control" id="endDate" placeholder="End Date">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button class="btn btn-secondary me-2" id="resetFilters">
+                                <i class="fas fa-undo me-2"></i>Reset Filters
+                            </button>
+                            <button class="btn btn-primary" id="applyFilters">
+                                <i class="fas fa-search me-2"></i>Apply Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Insights Tab -->
+                <div class="tab-pane fade" id="ml-insights-content" role="tabpanel" aria-labelledby="ml-insights-tab">
+                    <div class="row mt-4">
+                        <!-- ML Status Card -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Intelligence Status</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="mlStatus">Loading AI status...</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Predictions Section -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-crystal-ball me-2"></i>Smart Predictions</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <h6>Predict for Sample Position:</h6>
+                                        <div class="row g-2">
+                                            <div class="col-md-6">
+                                                <select class="form-select form-select-sm" id="predictionRole">
+                                                    <option value="">Select Role</option>
+                                                    <option value="Software Engineer">Software Engineer</option>
+                                                    <option value="Data Scientist">Data Scientist</option>
+                                                    <option value="Product Manager">Product Manager</option>
+                                                    <option value="Sales Manager">Sales Manager</option>
+                                                </select>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <select class="form-select form-select-sm" id="predictionTA">
+                                                    <option value="">Select TA Partner</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-md-6">
+                                                <input type="number" class="form-control form-control-sm" id="predictionBudget" placeholder="Max Budget">
+                                            </div>
+                                            <div class="col-md-6">
+                                                <button class="btn btn-primary btn-sm" id="getPredictions">
+                                                    <i class="fas fa-magic me-1"></i>Predict
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="predictionResults"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Anomaly Detection -->
+                        <div class="col-md-6 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Anomaly Detection</h5>
+                                    <button class="btn btn-sm btn-outline-primary" id="detectAnomalies">
+                                        <i class="fas fa-search me-1"></i>Scan
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="anomalyResults">Click "Scan" to detect unusual positions</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Recommendations -->
+                        <div class="col-12 mb-4">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="fas fa-lightbulb me-2"></i>AI Recommendations</h5>
+                                    <button class="btn btn-sm btn-outline-success" id="getRecommendations">
+                                        <i class="fas fa-sync me-1"></i>Generate
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="recommendationResults">Click "Generate" for AI-powered recommendations</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Model Training -->
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-cogs me-2"></i>Model Management</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-8">
+                                            <p class="mb-0">Retrain AI models with latest data for improved accuracy</p>
+                                            <small class="text-muted">Last training: Auto-updated on data upload</small>
+                                        </div>
+                                        <div class="col-md-4 text-end">
+                                            <button class="btn btn-warning" id="retrainModels">
+                                                <i class="fas fa-brain me-2"></i>Retrain Models
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data View Tab -->
+                <div class="tab-pane fade" id="data-view-content" role="tabpanel" aria-labelledby="data-view-tab">
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="fas fa-table me-2"></i>Raw Data View</h5>
+                                    <div>
+                                        <select class="form-select form-select-sm" id="dataSheetSelect">
+                                            <option value="">Select Sheet</option>
+                                            <option value="hired">Hired Data</option>
+                                            <option value="final">Pipeline Data</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="dataTableInfo" class="mb-3 text-muted"></div>
+                                    <div id="rawDataTable" class="table-responsive">
+                                        <p class="text-center text-muted">Select a sheet to view data</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Partner Matrix Tab -->
+                <div class="tab-pane fade" id="matrix-content" role="tabpanel" aria-labelledby="matrix-tab">
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h5 class="mb-0"><i class="fas fa-th me-2"></i>TA Partner vs Sourcing Partner Matrix</h5>
+                                    <div>
+                                        <select class="form-select form-select-sm me-2" id="matrixDataSelect">
+                                            <option value="">Select Data Source</option>
+                                            <option value="hired">Hired Data</option>
+                                            <option value="pipeline">Pipeline Data</option>
+                                        </select>
+                                        <select class="form-select form-select-sm" id="matrixMetricSelect">
+                                            <option value="">Select Metric</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div id="partnerMatrix">
+                                        <p class="text-center text-muted">Select data source and metric to view matrix</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Tabs -->
+    <div class="row">
+        <div class="col-12">
+            <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="hired-tab" data-bs-toggle="tab" data-bs-target="#hired-content" 
+                            type="button" role="tab" aria-controls="hired-content" aria-selected="false">
+                        <i class="fas fa-chart-line me-2"></i>Hired Performance
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="pipeline-tab" data-bs-toggle="tab" data-bs-target="#pipeline-content" 
+                            type="button" role="tab" aria-controls="pipeline-content" aria-selected="false">
+                        <i class="fas fa-tasks me-2"></i>Live Pipeline
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="data-view-tab" data-bs-toggle="tab" data-bs-target="#data-view-content" 
+                            type="button" role="tab" aria-controls="data-view-content" aria-selected="false">
+                        <i class="fas fa-table me-2"></i>Data View
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="matrix-tab" data-bs-toggle="tab" data-bs-target="#matrix-content" 
+                            type="button" role="tab" aria-controls="matrix-content" aria-selected="false">
+                        <i class="fas fa-th me-2"></i>Partner Matrix
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ml-insights-tab" data-bs-toggle="tab" data-bs-target="#ml-insights-content" 
+                            type="button" role="tab" aria-controls="ml-insights-content" aria-selected="false">
+                        <i class="fas fa-robot me-2"></i>AI Insights
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="dashboardTabContent">
+                <!-- Hired Performance Tab -->
+                <div class="tab-pane fade" id="hired-content" role="tabpanel" aria-labelledby="hired-tab">
+                    <!-- KPI Cards -->
+                    <div class="row mb-4 mt-4">
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="totalFilled">-</div>
+                                <div class="kpi-label">Total Positions Filled</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="avgTTF">-</div>
+                                <div class="kpi-label">Avg Time-to-Fill (days)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="overallConversion">-</div>
+                                <div class="kpi-label">Overall Conversion Rate (%)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="avgBudgetVariance">-</div>
+                                <div class="kpi-label">Avg Budget Variance (%)</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Commentary -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Insights</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="hiredCommentary">Loading insights...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Visualization Hub -->
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="visualization-hub">
+                                <!-- Dynamic Visualization Controls -->
+                                <div class="viz-controls-panel mb-3">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <div class="viz-controls-left">
+                                            <ul class="nav nav-pills viz-pills" id="hiredVizTabs" role="tablist">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link viz-pill active" id="funnel-tab" data-bs-toggle="pill" 
+                                                            data-bs-target="#funnel-content" type="button" role="tab">
+                                                        <i class="fas fa-filter me-2"></i>Recruitment Funnel
+                                                        <span class="pill-badge">Live</span>
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link viz-pill" id="ttf-tab" data-bs-toggle="pill" 
+                                                            data-bs-target="#ttf-content" type="button" role="tab">
+                                                        <i class="fas fa-stopwatch me-2"></i>Time Analysis
+                                                        <span class="pill-badge">Trend</span>
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link viz-pill" id="financial-tab" data-bs-toggle="pill" 
+                                                            data-bs-target="#financial-content" type="button" role="tab">
+                                                        <i class="fas fa-chart-pie me-2"></i>Financial
+                                                        <span class="pill-badge">€</span>
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link viz-pill" id="leaderboard-tab" data-bs-toggle="pill" 
+                                                            data-bs-target="#leaderboard-content" type="button" role="tab">
+                                                        <i class="fas fa-trophy me-2"></i>Rankings
+                                                        <span class="pill-badge">TOP</span>
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                        </div>
+                                        <div class="viz-controls-right">
+                                            <div class="btn-group" role="group">
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="fullscreenChart">
+                                                    <i class="fas fa-expand"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="downloadChart">
+                                                    <i class="fas fa-download"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-outline-primary" id="shareChart">
+                                                    <i class="fas fa-share"></i>
+                                                </button>
+                                                <div class="btn-group" role="group">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary dropdown-toggle" 
+                                                            data-bs-toggle="dropdown">
+                                                        <i class="fas fa-cog"></i>
+                                                    </button>
+                                                    <ul class="dropdown-menu">
+                                                        <li><a class="dropdown-item" href="#" id="chartSettings">Chart Settings</a></li>
+                                                        <li><a class="dropdown-item" href="#" id="dataExport">Export Data</a></li>
+                                                        <li><hr class="dropdown-divider"></li>
+                                                        <li><a class="dropdown-item" href="#" id="chartHelp">Help & Tips</a></li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Interactive Chart Content -->
+                                <div class="tab-content viz-content">
+                                    <div class="tab-pane fade show active" id="funnel-content" role="tabpanel">
+                                        <div class="interactive-chart-container">
+                                            <div class="chart-header">
+                                                <h6 class="chart-title">Recruitment Funnel Analysis</h6>
+                                                <div class="chart-controls">
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <input type="radio" class="btn-check" name="funnelView" id="funnelPercent" checked>
+                                                        <label class="btn btn-outline-primary" for="funnelPercent">Percentage</label>
+                                                        
+                                                        <input type="radio" class="btn-check" name="funnelView" id="funnelAbsolute">
+                                                        <label class="btn btn-outline-primary" for="funnelAbsolute">Absolute</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div id="funnelChart" class="interactive-chart"></div>
+                                            <div class="chart-insights">
+                                                <div class="row g-2">
+                                                    <div class="col-md-4">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-users text-primary"></i>
+                                                            <span class="insight-value" id="funnelCVCount">-</span>
+                                                            <span class="insight-label">Total CVs</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-percentage text-success"></i>
+                                                            <span class="insight-value" id="funnelConversionRate">-</span>
+                                                            <span class="insight-label">Conversion Rate</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-4">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-clock text-warning"></i>
+                                                            <span class="insight-value" id="funnelAvgTime">-</span>
+                                                            <span class="insight-label">Avg. Process Time</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="tab-pane fade" id="ttf-content" role="tabpanel">
+                                        <div class="interactive-chart-container">
+                                            <div class="chart-header">
+                                                <h6 class="chart-title">Time-to-Fill Analysis</h6>
+                                                <div class="chart-controls">
+                                                    <select class="form-select form-select-sm" id="ttfGroupBy">
+                                                        <option value="role">By Role</option>
+                                                        <option value="ta_partner">By TA Partner</option>
+                                                        <option value="project">By Project</option>
+                                                        <option value="country">By Country</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div id="ttfChart" class="interactive-chart"></div>
+                                            <div class="chart-insights">
+                                                <div class="row g-2">
+                                                    <div class="col-md-3">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-rocket text-success"></i>
+                                                            <span class="insight-value" id="ttfFastest">-</span>
+                                                            <span class="insight-label">Fastest Fill</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-turtle text-warning"></i>
+                                                            <span class="insight-value" id="ttfSlowest">-</span>
+                                                            <span class="insight-label">Slowest Fill</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-bullseye text-primary"></i>
+                                                            <span class="insight-value" id="ttfTarget">-</span>
+                                                            <span class="insight-label">On Target</span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col-md-3">
+                                                        <div class="insight-card">
+                                                            <i class="fas fa-trend-up text-info"></i>
+                                                            <span class="insight-value" id="ttfTrend">-</span>
+                                                            <span class="insight-label">30d Trend</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="tab-pane fade" id="financial-content" role="tabpanel">
+                                        <div class="interactive-chart-container">
+                                            <div class="chart-header">
+                                                <h6 class="chart-title">Financial Performance Analysis</h6>
+                                                <div class="chart-controls">
+                                                    <div class="btn-group btn-group-sm" role="group">
+                                                        <input type="radio" class="btn-check" name="financialView" id="budgetScatter" checked>
+                                                        <label class="btn btn-outline-primary" for="budgetScatter">Budget vs Actual</label>
+                                                        
+                                                        <input type="radio" class="btn-check" name="financialView" id="varianceHist">
+                                                        <label class="btn btn-outline-primary" for="varianceHist">Variance Distribution</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="row">
+                                                <div class="col-lg-8">
+                                                    <div id="budgetScatterChart" class="interactive-chart"></div>
+                                                </div>
+                                                <div class="col-lg-4">
+                                                    <div id="varianceHistChart" class="interactive-chart"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="tab-pane fade" id="leaderboard-content" role="tabpanel">
+                                        <div class="interactive-chart-container">
+                                            <div class="chart-header">
+                                                <h6 class="chart-title">Performance Leaderboard</h6>
+                                                <div class="chart-controls">
+                                                    <select class="form-select form-select-sm" id="leaderboardMetric">
+                                                        <option value="ttf">Time-to-Fill</option>
+                                                        <option value="conversion">Conversion Rate</option>
+                                                        <option value="volume">Volume</option>
+                                                        <option value="budget">Budget Efficiency</option>
+                                                    </select>
+                                                </div>
+                                            </div>
+                                            <div id="leaderboardTable" class="interactive-table"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Pipeline Tab -->
+                <div class="tab-pane fade" id="pipeline-content" role="tabpanel" aria-labelledby="pipeline-tab">
+                    <!-- KPI Cards -->
+                    <div class="row mb-4 mt-4">
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="totalOpen">-</div>
+                                <div class="kpi-label">Total Open Positions</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="avgAge">-</div>
+                                <div class="kpi-label">Avg Position Age (days)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="positionsOver60">-</div>
+                                <div class="kpi-label">Positions >60 days</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="kpi-card">
+                                <div class="kpi-value" id="bottleneckStage">-</div>
+                                <div class="kpi-label">Most Common Stage</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Commentary -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h5 class="mb-0"><i class="fas fa-robot me-2"></i>AI Insights</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div id="pipelineCommentary">Loading insights...</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Visualization Tabs -->
+                    <div class="row">
+                        <div class="col-12">
+                            <ul class="nav nav-pills mb-3" id="pipelineVizTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="stage-dist-tab" data-bs-toggle="pill" 
+                                            data-bs-target="#stage-dist-content" type="button" role="tab">
+                                        Stage Distribution
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="active-funnel-tab" data-bs-toggle="pill" 
+                                            data-bs-target="#active-funnel-content" type="button" role="tab">
+                                        Active Funnel
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="resource-tab" data-bs-toggle="pill" 
+                                            data-bs-target="#resource-content" type="button" role="tab">
+                                        Resource Analysis
+                                    </button>
+                                </li>
+                            </ul>
+                            
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="stage-dist-content" role="tabpanel">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div id="stageDistChart" style="height: 500px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="active-funnel-content" role="tabpanel">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div id="activeFunnelChart" style="height: 500px;"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="resource-content" role="tabpanel">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="row">
+                                                <div class="col-md-6 mb-3">
+                                                    <div id="projectChart" style="height: 300px;"></div>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <div id="partnerChart" style="height: 300px;"></div>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <div id="countryChart" style="height: 300px;"></div>
+                                                </div>
+                                                <div class="col-md-6 mb-3">
+                                                    <div id="roleChart" style="height: 300px;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
